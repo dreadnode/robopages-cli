@@ -6,7 +6,7 @@ functions:
     parameters:
       target:
         type: string
-        description: The hostname to enumerate subdomains for.
+        description: The hostname to recon.
         examples:
           - http://testphp.vulnweb.com
 
@@ -17,9 +17,9 @@ functions:
 
     cmdline: # https://github.com/projectdiscovery/httpx
       - httpx
-      - -title 
-      - -status-code 
-      - -tech-detect 
-      - -follow-redirects 
-      - -no-stdin 
+      - -title
+      - -status-code
+      - -tech-detect
+      - -follow-redirects
+      - -no-stdin
       - -u "${target}"
