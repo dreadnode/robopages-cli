@@ -9,7 +9,7 @@ Pages are loaded by default from the `~/.robopages/` directory (or any folder se
 To build the Docker image for the tool, run:
 
 ```bash
-docker build . -t robopages
+docker build . -t robopages  
 ```
 
 Optionally, you can create a bash alias like so:
@@ -46,7 +46,7 @@ Install robopages:
 
 ```bash
 # install https://github.com/dreadnode/robopages to ~/.robopages/robopages-main
-robopages install
+robopages install 
 
 # install a custom repository
 robopages install --source user/repo
