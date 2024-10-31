@@ -6,7 +6,6 @@ use actix_web::web;
 use actix_web::App;
 use actix_web::HttpResponse;
 use actix_web::HttpServer;
-use camino::Utf8PathBuf;
 
 use crate::book::flavors::rigging;
 use crate::book::flavors::Flavor;
@@ -15,6 +14,8 @@ use crate::book::{
     Book,
 };
 use crate::runtime;
+
+use super::ServeArgs;
 
 struct AppState {
     max_running_tasks: usize,
@@ -70,19 +71,13 @@ async fn process_calls(
     }
 }
 
-pub(crate) async fn serve(
-    path: Utf8PathBuf,
-    filter: Option<String>,
-    address: String,
-    lazy: bool,
-    max_running_tasks: usize,
-) -> anyhow::Result<()> {
-    if !address.contains("127.0.0.1:") && !address.contains("localhost:") {
+pub(crate) async fn serve(args: ServeArgs) -> anyhow::Result<()> {
+    if !args.address.contains("127.0.0.1:") && !args.address.contains("localhost:") {
         log::warn!("external address specified, this is an unsafe configuration as no authentication is provided");
     }
 
-    let book = Arc::new(Book::from_path(path, filter)?);
-    if !lazy {
+    let book = Arc::new(Book::from_path(args.path, args.filter)?);
+    if !args.lazy {
         for page in book.pages.values() {
             for (func_name, func) in page.functions.iter() {
                 if let Some(container) = &func.container {
@@ -93,15 +88,16 @@ pub(crate) async fn serve(
         }
     }
 
-    let max_running_tasks = if max_running_tasks == 0 {
+    let max_running_tasks = if args.workers == 0 {
         std::thread::available_parallelism()?.into()
     } else {
-        max_running_tasks
+        args.workers
     };
 
     log::info!(
-        "serving {} pages on http://{address} with {max_running_tasks} max running tasks",
+        "serving {} pages on http://{} with {max_running_tasks} max running tasks",
         book.size(),
+        &args.address,
     );
 
     let app_state = Arc::new(AppState {
@@ -122,7 +118,7 @@ pub(crate) async fn serve(
             .default_service(web::route().to(not_found))
             .wrap(actix_web::middleware::Logger::default())
     })
-    .bind(&address)
+    .bind(&args.address)
     .map_err(|e| anyhow!(e))?
     .run()
     .await

@@ -1,16 +1,16 @@
 #[macro_use]
 extern crate anyhow;
 
-use clap::Parser;
-use cli::Args;
-
 mod book;
 mod cli;
 mod runtime;
 
+use clap::Parser;
+use cli::Arguments;
+
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    let args = Args::parse();
+    let args = Arguments::parse();
 
     if std::env::var_os("RUST_LOG").is_none() {
         // set `RUST_LOG=debug` to see debug logs
@@ -24,22 +24,11 @@ async fn main() -> anyhow::Result<()> {
         .init();
 
     let result = match args.command {
-        cli::Command::Install { source, path } => cli::install(source, path).await,
-        cli::Command::Create { template, name } => cli::create(template, name).await,
-        cli::Command::View { path, filter } => cli::view(path, filter).await,
-        cli::Command::Serve {
-            path,
-            filter,
-            address,
-            lazy,
-            workers,
-        } => cli::serve(path, filter, address, lazy, workers).await,
-        cli::Command::Run {
-            path,
-            function,
-            defines,
-            auto,
-        } => cli::run(path, function, defines, auto).await,
+        cli::Command::Install(args) => cli::install(args).await,
+        cli::Command::Create(args) => cli::create(args).await,
+        cli::Command::View(args) => cli::view(args).await,
+        cli::Command::Serve(args) => cli::serve(args).await,
+        cli::Command::Run(args) => cli::run(args).await,
     };
 
     if let Err(e) = result {

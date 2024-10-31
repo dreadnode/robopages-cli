@@ -1,7 +1,13 @@
 [package]
 name = "robopages"
+description = "CLI and API server for Robopages, a YAML based files for describing tools to large language models (LLMs)"
+authors = ["Simone Margaritelli (simone@dreadnode.io)"]
 version = "0.1.0"
 edition = "2021"
+readme = "README.md"
+repository = "https://github.com/dreadnode/robopages-cli"
+homepage = "https://github.com/dreadnode/robopages"
+license = "MIT"
 
 [dependencies]
 actix-cors = "0.7.0"

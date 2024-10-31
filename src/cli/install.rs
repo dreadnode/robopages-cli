@@ -2,9 +2,11 @@ use std::io::Write;
 
 use camino::Utf8PathBuf;
 
-pub(crate) async fn install(source: String, path: Utf8PathBuf) -> anyhow::Result<()> {
+use super::InstallArgs;
+
+pub(crate) async fn install(args: InstallArgs) -> anyhow::Result<()> {
     let path = Utf8PathBuf::from(
-        shellexpand::full(path.as_str())
+        shellexpand::full(args.path.as_str())
             .map_err(|e| anyhow::anyhow!("failed to expand path: {}", e))?
             .into_owned(),
     );
@@ -12,17 +14,20 @@ pub(crate) async fn install(source: String, path: Utf8PathBuf) -> anyhow::Result
         return Err(anyhow::anyhow!("{:?} already exists", path));
     }
 
-    if source.ends_with(".zip") {
+    if args.source.ends_with(".zip") {
         // install from zip archive
-        log::info!("extracting archive {} to {:?}", &source, &path);
-        let mut zip = zip::ZipArchive::new(std::fs::File::open(&source)?)?;
+        log::info!("extracting archive {} to {:?}", &args.source, &path);
+        let mut zip = zip::ZipArchive::new(std::fs::File::open(&args.source)?)?;
         zip.extract(path)?;
     } else {
         // install from github repository
-        let source = if !source.contains("://") {
-            format!("https://github.com/{source}/archive/refs/heads/main.zip")
+        let source = if !args.source.contains("://") {
+            format!(
+                "https://github.com/{}/archive/refs/heads/main.zip",
+                &args.source
+            )
         } else {
-            format!("{source}/archive/refs/heads/main.zip")
+            format!("{}/archive/refs/heads/main.zip", &args.source)
         };
 
         log::info!("downloading robopages from {} ...", source);

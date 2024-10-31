@@ -1,22 +1,24 @@
-use camino::Utf8PathBuf;
+use super::CreateArgs;
 
-use crate::book::templates::Template;
-
-pub(crate) async fn create(template: Template, name: Utf8PathBuf) -> anyhow::Result<()> {
-    if name.exists() {
-        return Err(anyhow::anyhow!("{:?} already exists", name));
+pub(crate) async fn create(args: CreateArgs) -> anyhow::Result<()> {
+    if args.name.exists() {
+        return Err(anyhow::anyhow!("{:?} already exists", args.name));
     }
 
-    for parts in template.get_data()? {
+    for parts in args.template.get_data()? {
         if let Some(part_name) = parts.name {
-            let asset = name.parent().unwrap().join(part_name);
+            let asset = args.name.parent().unwrap().join(part_name);
             log::info!("creating asset {:?}", asset.to_string());
 
             std::fs::write(asset, parts.data)?;
         } else {
-            log::info!("creating {:?} from template {}", name, template.to_string());
+            log::info!(
+                "creating {:?} from template {}",
+                &args.name,
+                args.template.to_string()
+            );
 
-            std::fs::write(&name, parts.data)?;
+            std::fs::write(&args.name, parts.data)?;
         }
     }
 

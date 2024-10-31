@@ -1,25 +1,20 @@
 use std::{collections::BTreeMap, sync::Arc};
 
-use camino::Utf8PathBuf;
-
 use crate::{
     book::{flavors::openai, Book},
     runtime::{self, prompt},
 };
 
-pub(crate) async fn run(
-    path: Utf8PathBuf,
-    func_name: String,
-    defines: Vec<(String, String)>,
-    auto: bool,
-) -> anyhow::Result<()> {
-    let book = Arc::new(Book::from_path(path, None)?);
-    let function = book.get_function(&func_name)?;
+use super::RunArgs;
+
+pub(crate) async fn run(args: RunArgs) -> anyhow::Result<()> {
+    let book = Arc::new(Book::from_path(args.path, None)?);
+    let function = book.get_function(&args.function)?;
 
     let mut arguments = BTreeMap::new();
 
     // convert defines to BTreeMap
-    let defines: BTreeMap<String, String> = defines.into_iter().collect();
+    let defines: BTreeMap<String, String> = args.defines.into_iter().collect();
 
     for arg_name in function.function.parameters.keys() {
         if let Some(value) = defines.get(arg_name) {
@@ -38,7 +33,7 @@ pub(crate) async fn run(
     let call = openai::Call {
         id: None,
         function: openai::FunctionCall {
-            name: func_name,
+            name: args.function,
             arguments,
         },
         call_type: "function".to_string(),
@@ -46,7 +41,7 @@ pub(crate) async fn run(
 
     log::debug!("running function {:?}", function);
 
-    let result = runtime::execute_call(!auto, 10, book, call).await?;
+    let result = runtime::execute_call(!args.auto, 10, book, call).await?;
 
     println!("\n{}", result.content);
 

@@ -1,10 +1,11 @@
-use camino::Utf8PathBuf;
 use comfy_table::Table;
 
 use crate::book::{runtime::ExecutionFlavor, Book};
 
-pub(crate) async fn view(path: Utf8PathBuf, filter: Option<String>) -> anyhow::Result<()> {
-    let book = Book::from_path(path, filter)?;
+use super::ViewArgs;
+
+pub(crate) async fn view(args: ViewArgs) -> anyhow::Result<()> {
+    let book = Book::from_path(args.path, args.filter)?;
 
     let mut table = Table::new();
 
