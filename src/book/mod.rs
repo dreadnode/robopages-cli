@@ -114,6 +114,7 @@ impl Container {
         if let Some(volumes) = &self.volumes {
             for volume in volumes {
                 dockerized.args.push(format!("-v{}", volume));
+                dockerized.args.push(volume.to_string());
             }
         }
 
