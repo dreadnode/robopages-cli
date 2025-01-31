@@ -73,7 +73,7 @@ async fn run_command(command: &str, args: &[&str]) -> anyhow::Result<()> {
 }
 
 pub(crate) async fn pull_image(image: &str, platform: Option<String>) -> anyhow::Result<()> {
-    run_command(
+    let result = run_command(
         "sh",
         &[
             "-c",
@@ -87,7 +87,13 @@ pub(crate) async fn pull_image(image: &str, platform: Option<String>) -> anyhow:
             ),
         ],
     )
-    .await
+    .await;
+
+    if let Err(e) = result {
+        log::error!("Docker pull encountered an error: {}", e);
+    }
+
+    Ok(())
 }
 
 pub(crate) async fn build_image(name: &str, path: &str) -> anyhow::Result<()> {
