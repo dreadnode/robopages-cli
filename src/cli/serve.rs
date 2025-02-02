@@ -1,5 +1,7 @@
 use std::collections::HashMap;
+use std::collections::HashSet;
 use std::sync::Arc;
+use tokio::sync::Mutex;
 
 use actix_cors::Cors;
 use actix_web::web;
@@ -20,7 +22,7 @@ use super::ServeArgs;
 
 struct AppState {
     max_running_tasks: usize,
-    book: Arc<Book>,
+    book: Arc<Mutex<Book>>,
     ssh: Option<SSHConnection>,
 }
 
@@ -38,13 +40,13 @@ async fn serve_pages_impl(
 
     match flavor {
         Flavor::Nerve => {
-            Ok(HttpResponse::Ok().json(state.book.as_tools::<nerve::FunctionGroup>(filter)))
+            Ok(HttpResponse::Ok().json(state.book.lock().await.as_tools::<nerve::FunctionGroup>(filter)))
         }
         Flavor::Rigging => {
-            Ok(HttpResponse::Ok().json(state.book.as_tools::<rigging::Tool>(filter)))
+            Ok(HttpResponse::Ok().json(state.book.lock().await.as_tools::<rigging::Tool>(filter)))
         }
         // default to openai
-        _ => Ok(HttpResponse::Ok().json(state.book.as_tools::<openai::Tool>(filter))),
+        _ => Ok(HttpResponse::Ok().json(state.book.lock().await.as_tools::<openai::Tool>(filter))),
     }
 }
 
@@ -67,10 +69,11 @@ async fn process_calls(
     state: web::Data<Arc<AppState>>,
     calls: web::Json<Vec<openai::Call>>,
 ) -> actix_web::Result<HttpResponse> {
+    let book = state.book.lock().await;
     match runtime::execute(
         state.ssh.clone(),
         false,
-        state.book.clone(),
+        Arc::new(book.clone()),
         calls.0,
         state.max_running_tasks,
     )
@@ -98,15 +101,29 @@ pub(crate) async fn serve(args: ServeArgs) -> anyhow::Result<()> {
         None
     };
 
-    let book = Arc::new(Book::from_path(args.path, args.filter)?);
+    let book = Book::from_path(args.path, args.filter)?;
+    let book = Arc::new(Mutex::new(book));
+
     if !args.lazy {
-        for page in book.pages.values() {
-            for (func_name, func) in page.functions.iter() {
+        let mut book_guard = book.lock().await;
+        let mut failed_containers = HashSet::new();
+
+        // First collect all failures
+        for (_, page) in &book_guard.pages {
+            for (func_name, func) in &page.functions {
                 if let Some(container) = &func.container {
                     log::info!("pre building container for function {} ...", func_name);
-                    container.resolve().await?;
+                    if let Err(e) = container.resolve().await {
+                        log::error!("Failed to resolve container for function {}: {}", func_name, e);
+                        failed_containers.insert(func_name.clone());
+                    }
                 }
             }
+        }
+
+        // Then update the failed containers
+        for func_name in failed_containers {
+            book_guard.mark_failed_container(func_name);
         }
     }
 
@@ -118,7 +135,7 @@ pub(crate) async fn serve(args: ServeArgs) -> anyhow::Result<()> {
 
     log::info!(
         "serving {} pages on http://{} with {max_running_tasks} max running tasks",
-        book.size(),
+        book.lock().await.size(),
         &args.address,
     );
 
