@@ -198,9 +198,10 @@ impl<'a> FunctionRef<'a> {
                         .map_err(|e| anyhow!(e))?
                         .as_str();
                     let var_default = caps.get(3).map(|m| m.as_str());
+                    let full_match = caps.get(0).unwrap().as_str();
 
                     // read variable from the environment if the name starts with env. or ENV.
-                    if var_name.starts_with("env.") || var_name.starts_with("ENV.") {
+                    let replacement_value = if var_name.starts_with("env.") || var_name.starts_with("ENV.") {
                         let env_var_name = var_name.replace("env.", "").replace("ENV.", "");
                         let env_var = std::env::var(&env_var_name);
                         let env_var_value = if let Ok(value) = env_var {
@@ -235,7 +236,10 @@ impl<'a> FunctionRef<'a> {
                         default_value.to_string()
                     } else {
                         return Err(anyhow::anyhow!("argument {} not provided", var_name));
-                    }
+                    };
+                    
+                    // Replace only the pattern within the argument
+                    arg.replace(full_match, &replacement_value)
                 } else {
                     arg
                 });
