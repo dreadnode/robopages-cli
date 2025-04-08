@@ -114,7 +114,7 @@ impl std::fmt::Display for ExecutionFlavor {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ExecutionContext {
     #[serde(rename = "cmdline")]
     CommandLine(Vec<String>),
