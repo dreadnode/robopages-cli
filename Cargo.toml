@@ -30,6 +30,6 @@ serde_yaml = "0.9.34"
 shell-escape = "0.1.5"
 shellexpand = { version = "3.1.0", features = ["full"] }
 tempfile = "3.13.0"
-tokio = { version = "1.41.0", features = ["full"] }
+tokio = { version = "1.43.1", features = ["full"] }
 which = "6.0.3"
 zip = "2.2.0"
