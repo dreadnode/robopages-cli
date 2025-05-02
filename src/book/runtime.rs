@@ -187,75 +187,75 @@ impl<'a> FunctionRef<'a> {
         let command_line = self.function.execution.get_command_line()?;
         let mut env = BTreeMap::new();
 
-// interpolate the arguments
-let command_line = {
-    let mut interpolated = Vec::new();
-    for arg in command_line {
-        if ARG_VALUE_PARSER.is_match(&arg) {
-            // Process args with placeholders by replacing only the matched patterns
-            let mut processed_arg = arg.clone();
+    // interpolate the arguments
+    let command_line = {
+        let mut interpolated = Vec::new();
+        for arg in command_line {
+            if ARG_VALUE_PARSER.is_match(&arg) {
+                // Process args with placeholders by replacing only the matched     patterns
+                let mut processed_arg = arg.clone();
 
-            // Find all matches and collect the replacements
-            let mut replacements = Vec::new();
-            for caps in ARG_VALUE_PARSER.captures_iter(&arg) {
-                let full_match = caps.get(0).unwrap().as_str();
-                let var_name = caps.get(1).ok_or(ARG_EXPRESSION_ERROR).map_err(|e| anyhow!(e))?.as_str();
-                let var_default = caps.get(3).map(|m| m.as_str());
+                // Find all matches and collect the replacements
+                let mut replacements = Vec::new();
+                for caps in ARG_VALUE_PARSER.captures_iter(&arg) {
+                    let full_match = caps.get(0).unwrap().as_str();
+                    let var_name = caps.get(1).ok_or(ARG_EXPRESSION_ERROR).map_err(|    e| anyhow!(e))?.as_str();
+                    let var_default = caps.get(3).map(|m| m.as_str());
 
-                let replacement = if var_name.starts_with("env.") || var_name.starts_with("ENV.") {
-                    let env_var_name = var_name.replace("env.", "").replace("ENV.", "");
-                    let env_var = std::env::var(&env_var_name);
-                    let env_var_value = if let Ok(value) = env_var {
-                        value
-                    } else if let Some(def) = var_default {
-                        def.to_string()
-                    } else {
-                        return Err(anyhow::anyhow!(
-                            "environment variable {} not set",
-                            env_var_name
-                        ));
-                    };
-
-                    // add the environment variable to the command line for later use
-                    env.insert(env_var_name, env_var_value.to_owned());
-
-                    env_var_value
-                } else if let Some(value) = arguments.get(var_name) {
-                    if value.is_empty() {
-                        if let Some(def) = var_default {
+                    let replacement = if var_name.starts_with("env.") || var_name.  starts_with("ENV.") {
+                        let env_var_name = var_name.replace("env.", "").replace ("ENV.", "");
+                        let env_var = std::env::var(&env_var_name);
+                        let env_var_value = if let Ok(value) = env_var {
+                            value
+                        } else if let Some(def) = var_default {
                             def.to_string()
+                        } else {
+                            return Err(anyhow::anyhow!(
+                                "environment variable {} not set",
+                                env_var_name
+                            ));
+                        };
+
+                        // add the environment variable to the command line for     later use
+                        env.insert(env_var_name, env_var_value.to_owned());
+
+                        env_var_value
+                    } else if let Some(value) = arguments.get(var_name) {
+                        if value.is_empty() {
+                            if let Some(def) = var_default {
+                                def.to_string()
+                            } else {
+                                value.to_string()
+                            }
                         } else {
                             value.to_string()
                         }
+                    } else if let Some(default_value) = var_default {
+                        default_value.to_string()
                     } else {
-                        value.to_string()
-                    }
-                } else if let Some(default_value) = var_default {
-                    default_value.to_string()
-                } else {
-                    return Err(anyhow::anyhow!("argument {} not provided", var_name));
-                };
+                        return Err(anyhow::anyhow!("argument {} not provided",  var_name));
+                    };
 
-                replacements.push((full_match, replacement));
+                    replacements.push((full_match, replacement));
+                }
+
+                // Apply all replacements to the arg string
+                for (pattern, replacement) in replacements {
+                    processed_arg = processed_arg.replace(pattern, &replacement);
+                }
+
+                interpolated.push(processed_arg);
+            } else {
+                // For args without placeholders, use as-is
+                interpolated.push(arg);
             }
-
-            // Apply all replacements to the arg string
-            for (pattern, replacement) in replacements {
-                processed_arg = processed_arg.replace(pattern, &replacement);
-            }
-
-            interpolated.push(processed_arg);
-        } else {
-            // For args without placeholders, use as-is
-            interpolated.push(arg);
+        }
+        interpolated
+    };
+            // final parsing
+            CommandLine::from_vec_with_env(&command_line, env)
         }
     }
-    interpolated
-};
-        // final parsing
-        CommandLine::from_vec_with_env(&command_line, env)
-    }
-}
 
 #[cfg(test)]
 mod tests {
