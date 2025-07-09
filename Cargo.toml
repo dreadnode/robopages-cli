@@ -12,7 +12,7 @@ license = "MIT"
 [dependencies]
 actix-cors = "0.7.0"
 actix-web = "4.9.0"
-actix-web-lab = "0.23.0"
+actix-web-lab = "0.24.0"
 anyhow = "1.0.90"
 async-ssh2-tokio = "0.8.12"
 camino = { version = "1.1.9", features = ["serde"] }
