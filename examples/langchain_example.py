@@ -2,7 +2,7 @@ from os import getenv
 from typing import Dict, List, Optional, Type
 import requests
 
-from langchain_core.tools import BaseTool, ArgsSchema
+from langchain_core.tools import BaseTool
 from pydantic import BaseModel, Field, create_model
 
 _SERVER_URL = getenv("ROBOPAGES_SERVER", "http://127.0.0.1:8000")
