@@ -1,34 +1,31 @@
 {
-    $schema: "https://docs.renovatebot.com/renovate-schema.json",
-    extends: [
-      "config:base",
-      ":disableRateLimiting",
-      ":dependencyDashboard",
-      ":semanticCommits",
-      ":automergeDigest",
-      ":automergeBranch",
-    ],
-    dependencyDashboardTitle: "Renovate Dashboard 🤖",
-    suppressNotifications: ["prIgnoreNotification"],
-    rebaseWhen: "conflicted",
-    commitBodyTable: true,
-    cargo: {
-      commitMessageTopic: "Rust crate {{depName}}",
+  $schema: "https://docs.renovatebot.com/renovate-schema.json",
+  extends: [
+    "config:base",
+    ":disableRateLimiting",
+    ":semanticCommits",
+    ":enablePreCommit",
+    ":automergeDigest",
+    ":automergeBranch",
+  ],
+  dependencyDashboardTitle: "Renovate Dashboard 🤖",
+  suppressNotifications: ["prIgnoreNotification"],
+  rebaseWhen: "conflicted",
+  commitBodyTable: true,
+  "pre-commit": {
+    enabled: true,
+  },
+  enabledManagers: [
+    "github-actions",
+    "pre-commit"
+  ],
+  ignorePaths: [],
+  packageRules: [
+    {
+      description: "Auto merge non-major updates",
+      matchUpdateTypes: ["minor", "patch"],
+      automerge: true,
+      automergeType: "pr",
     },
-    packageRules: [
-      {
-        description: "Auto merge non-major updates",
-        matchUpdateTypes: ["minor", "patch"],
-        automerge: true,
-        automergeType: "pr",
-      },
-      {
-        description: "Group Rust dev dependencies",
-        matchManagers: ["cargo"],
-        matchDepTypes: ["dev-dependencies"],
-        groupName: "Rust dev dependencies",
-        groupSlug: "rust-dev",
-      },
-    ],
-    ignorePaths: [],
-  }
+  ],
+}
