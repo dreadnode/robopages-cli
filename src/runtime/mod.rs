@@ -217,6 +217,14 @@ mod tests {
 
     use super::*;
     use std::collections::BTreeMap;
+    use std::collections::HashSet;
+
+    fn create_test_book() -> Arc<Book> {
+        Arc::new(Book {
+            pages: BTreeMap::new(),
+            failed_containers: HashSet::new(),
+        })
+    }
 
     #[tokio::test]
     async fn test_execute_call() {
@@ -257,6 +265,7 @@ mod tests {
                 map.insert(camino::Utf8PathBuf::from("test_page"), mock_page);
                 map
             },
+            failed_containers: HashSet::new(),
         });
 
         let result = execute_call(None, false, 10, book, call).await.unwrap();
@@ -327,6 +336,7 @@ mod tests {
                 map.insert(camino::Utf8PathBuf::from("test_page"), mock_page);
                 map
             },
+            failed_containers: HashSet::new(),
         });
 
         let results = execute(None, false, book, calls, 10).await.unwrap();
@@ -352,6 +362,7 @@ mod tests {
                 );
                 map
             },
+            failed_containers: HashSet::new(),
         });
 
         let calls = vec![openai::Call {
@@ -397,6 +408,7 @@ mod tests {
                 );
                 map
             },
+            failed_containers: HashSet::new(),
         });
 
         let calls = vec![openai::Call {

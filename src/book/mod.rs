@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, HashMap, HashSet};
 
 use camino::Utf8PathBuf;
 use glob::glob;
@@ -27,7 +27,15 @@ macro_rules! eval_if_in_filter {
     };
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum ExecutionContext {
+    #[serde(rename = "cmdline")]
+    CommandLine(Vec<String>),
+    #[serde(rename = "platforms")]
+    PlatformSpecific(BTreeMap<String, Vec<String>>),
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Parameter {
     #[serde(rename = "type")]
     pub param_type: String,
@@ -42,7 +50,7 @@ fn default_required() -> bool {
     true
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Container {
     #[serde(flatten)]
     pub source: ContainerSource,
@@ -143,7 +151,7 @@ impl Container {
 
 // TODO: add optional parsers to reduce output tokens
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Function {
     pub description: String,
     pub parameters: BTreeMap<String, Parameter>,
@@ -153,7 +161,7 @@ pub struct Function {
     pub execution: runtime::ExecutionContext,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Page {
     #[serde(skip_serializing_if = "String::is_empty")]
     #[serde(default = "String::new")]
@@ -185,9 +193,10 @@ impl Page {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Book {
     pub pages: BTreeMap<Utf8PathBuf, Page>,
+    pub failed_containers: HashSet<String>,
 }
 
 impl Book {
@@ -313,7 +322,14 @@ impl Book {
             pages.insert(page_path, page);
         }
 
-        Ok(Self { pages })
+        Ok(Self {
+            pages,
+            failed_containers: HashSet::new(),
+        })
+    }
+
+    pub fn mark_failed_container(&mut self, func_name: String) {
+        self.failed_containers.insert(func_name);
     }
 
     pub fn size(&self) -> usize {
@@ -335,20 +351,36 @@ impl Book {
         Err(anyhow::anyhow!("function {} not found", name))
     }
 
-    pub fn as_tools<'a, T>(&'a self, filter: Option<String>) -> Vec<T>
+    // Modify as_tools to filter out failed functions
+    pub fn as_tools<T>(&self, filter: Option<String>) -> Vec<T>
     where
-        Vec<T>: std::convert::From<&'a Page>,
+        for<'a> Vec<T>: From<&'a Page>,
     {
         let mut tools = Vec::new();
-
         for (page_path, page) in &self.pages {
+            // Create filtered page in its own scope with proper ownership
+            let filtered_page = {
+                // Filter out failed functions
+                let filtered_functions = page.functions
+                    .iter()
+                    .filter(|(name, _)| !self.failed_containers.contains(*name))
+                    .map(|(name, func)| (name.clone(), func.clone()))
+                    .collect();
+
+                Page {
+                    name: page.name.clone(),
+                    description: page.description.clone(),
+                    functions: filtered_functions,
+                    categories: page.categories.clone(),
+                }
+            };
+
             eval_if_in_filter!(
                 page_path,
                 filter,
-                tools.extend(<&Page as Into<Vec<T>>>::into(page))
+                tools.extend(Vec::<T>::from(&filtered_page))
             );
         }
-
         tools
     }
 }
@@ -381,7 +413,10 @@ mod tests {
             },
         );
         pages.insert(Utf8PathBuf::from("test_page"), page);
-        Book { pages }
+        Book {
+            pages,
+            failed_containers: HashSet::new(),
+        }
     }
 
     #[test]
