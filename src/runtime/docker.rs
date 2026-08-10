@@ -10,7 +10,7 @@ use tokio::{
     task,
 };
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum ContainerSource {
     #[serde(rename = "image")]
     Image(String),
@@ -88,6 +88,7 @@ pub(crate) async fn pull_image(image: &str, platform: Option<String>) -> anyhow:
         ],
     )
     .await
+    .map_err(|e| anyhow::anyhow!("Docker pull encountered an error: {}: {}", image, e))
 }
 
 pub(crate) async fn build_image(name: &str, path: &str) -> anyhow::Result<()> {
